@@ -18,7 +18,23 @@ rmw_take_event(const rmw_event_t * event_handle, void * event_info, bool * taken
   (void)event_handle;
   (void)event_info;
 
-  RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_take_event (STUB)");
+  RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_take_event");
+
+  switch (event_handle->event_type) {
+    case RMW_EVENT_REQUESTED_QOS_INCOMPATIBLE:
+      RCUTILS_LOG_INFO_NAMED(
+        "rmw_zenoh_cpp", "rmw_take_event(): requested qos incompatible");
+      throw 42;
+      break;
+
+    case RMW_EVENT_OFFERED_QOS_INCOMPATIBLE:
+      RCUTILS_LOG_INFO_NAMED(
+        "rmw_zenoh_cpp", "rmw_take_event(): offered qos incompatible");
+      break;
+    default:
+      break;
+  }
+
   *taken = true;
 
   return RMW_RET_OK;
@@ -30,7 +46,15 @@ rmw_publisher_event_init(
   const rmw_publisher_t * publisher,
   rmw_event_type_t event_type)
 {
-  // RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_publisher_event_init (STUB)");
+  RCUTILS_LOG_INFO_NAMED(
+    "rmw_zenoh_cpp",
+    "rmw_publisher_event_init(%d)",
+    static_cast<int>(event_type));
+
+  if (event_type == RMW_EVENT_OFFERED_QOS_INCOMPATIBLE)
+  {
+    RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "  init event: OFFERED_QOS_INCOMPATIBLE");
+  }
 
   RMW_CHECK_ARGUMENT_FOR_NULL(publisher, RMW_RET_INVALID_ARGUMENT);
   RMW_CHECK_ARGUMENT_FOR_NULL(event, RMW_RET_INVALID_ARGUMENT);
@@ -65,7 +89,10 @@ rmw_subscription_event_init(
   const rmw_subscription_t * subscription,
   rmw_event_type_t event_type)
 {
-  // RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_subscription_event_init");
+  RCUTILS_LOG_INFO_NAMED(
+    "rmw_zenoh_cpp",
+    "rmw_subscription_event_init(%d)",
+    static_cast<int>(event_type));
 
   RMW_CHECK_ARGUMENT_FOR_NULL(subscription, RMW_RET_INVALID_ARGUMENT);
   RMW_CHECK_ARGUMENT_FOR_NULL(event, RMW_RET_INVALID_ARGUMENT);

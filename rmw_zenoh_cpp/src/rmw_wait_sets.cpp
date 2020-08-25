@@ -105,17 +105,29 @@ rmw_wait(
   rmw_wait_set_t * wait_set,
   const rmw_time_t * wait_timeout)
 {
-  (void)subscriptions;
   (void)guard_conditions;
   (void)services;
   (void)clients;
   (void)events;
   (void)wait_set;
   (void)wait_timeout;
-  RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_wait (STUB)");
+  RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_wait");
   // return RMW_RET_ERROR;
 
-  return RMW_RET_OK;
+  for (size_t i = 0; i < subscriptions->subscriber_count; i++)
+  {
+    // todo: see which (if any) subscribers have received something
+    // from Zenoh since our last wait() call. If something has NOT
+    // been received, we need to set the corresponding subscribers[]
+    // pointer to nullptr.
+    subscriptions->subscribers[i] = nullptr;
+  }
+
+  // todo: if something happened on >0 subscriber(s), return OK:
+  //return RMW_RET_OK;
+
+  // if nothing was received, we should return RMW_RET_TIMEOUT
+  return RMW_RET_TIMEOUT;
 }
 
 } // extern "C"

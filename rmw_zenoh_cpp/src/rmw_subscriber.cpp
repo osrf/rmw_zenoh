@@ -403,15 +403,24 @@ rmw_subscription_count_matched_publishers(const rmw_subscription_t * subscriptio
   return RMW_RET_ERROR;
 }
 
-// STUB
 rmw_ret_t
 rmw_subscription_get_actual_qos(
   const rmw_subscription_t * subscription,
   rmw_qos_profile_t * qos_profile)
 {
   (void)subscription;
-  (void)qos_profile;
-  // RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_subscription_get_actual_qos");
+  RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_subscription_get_actual_qos");
+
+  qos_profile->history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
+  qos_profile->depth = 10;  // whatever
+  qos_profile->reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  qos_profile->durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+  qos_profile->deadline = RMW_QOS_DEADLINE_DEFAULT;
+  qos_profile->lifespan = RMW_QOS_LIFESPAN_DEFAULT;
+  qos_profile->liveliness = RMW_QOS_POLICY_LIVELINESS_AUTOMATIC;
+  qos_profile->liveliness_lease_duration =
+    RMW_QOS_LIVELINESS_LEASE_DURATION_DEFAULT;
+
   return RMW_RET_OK;
 }
 
