@@ -27,10 +27,10 @@ rmw_publish(
   rmw_publisher_allocation_t * allocation)
 {
   (void) allocation;
-  // RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp",
-  //                        "rmw_publish to %s, %ld",
-  //                        publisher->topic_name,
-  //                        static_cast<rmw_publisher_data_t *>(publisher->data)->zn_topic_id_);
+  RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp",
+                         "[rmw_publish] %s (%ld)",
+                         publisher->topic_name,
+                         static_cast<rmw_publisher_data_t *>(publisher->data)->zn_topic_id_);
 
   // ASSERTIONS ================================================================
   RMW_CHECK_ARGUMENT_FOR_NULL(publisher, RMW_RET_INVALID_ARGUMENT);
@@ -68,16 +68,16 @@ rmw_publish(
   eprosima::fastcdr::Cdr ser(fastbuffer,
                              eprosima::fastcdr::Cdr::DEFAULT_ENDIAN,
                              eprosima::fastcdr::Cdr::DDS_CDR);  // Object that serializes the data.
-  if (!publisher_data->type_support_->serializeROSmessage(const_cast<void *>(ros_message),
-                                                         ser,
-                                                         publisher_data->type_support_impl_)) {
+  if (!publisher_data->type_support_->serializeROSmessage(ros_message,
+                                                          ser,
+                                                          publisher_data->type_support_impl_)) {
     allocator->deallocate(msg_bytes, allocator->state);
     return RMW_RET_ERROR;
   }
 
   size_t data_length = ser.getSerializedDataLength();
 
-  // // PUBLISH ON ZENOH MIDDLEWARE LAYER =========================================
+  // PUBLISH ON ZENOH MIDDLEWARE LAYER =========================================
   zn_write_wrid(publisher_data->zn_session_,
                 publisher_data->zn_topic_id_,
                 msg_bytes,

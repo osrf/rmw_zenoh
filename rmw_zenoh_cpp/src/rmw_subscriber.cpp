@@ -31,6 +31,7 @@ rmw_create_subscription(
 {
   // RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_create_subscription");
   // RCUTILS_LOG_INFO("NODE_NAME: %s", node->name);
+  RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "[rmw_create_subscription] %s", topic_name);
 
   // ASSERTIONS ================================================================
   RMW_CHECK_ARGUMENT_FOR_NULL(node, nullptr);
@@ -113,6 +114,9 @@ rmw_create_subscription(
   subscription->options = *subscription_options;
   subscription->can_loan_messages = false;
 
+  // NOTE(CH3): Does this leak because it can't be freed?
+  // If so, should I cast away the const and free it later? (It's bad code smell though...)
+  // (The topic_name member is const, so it can't be freed without a const cast)
   subscription->topic_name = rcutils_strdup(topic_name, *allocator);
   if (!subscription->topic_name) {
     RMW_SET_ERROR_MSG("failed to allocate subscription topic name");
@@ -143,8 +147,6 @@ rmw_create_subscription(
   subscription_data->zn_session_ = s;
   subscription_data->typesupport_identifier_ = type_support->typesupport_identifier;
   subscription_data->type_support_impl_ = type_support->data;
-
-  // RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "Creating subscription to: %s", topic_name);
 
   // Allocate and in-place assign new message typesupport instance
   subscription_data->type_support_ = static_cast<MessageTypeSupport_cpp *>(
@@ -185,8 +187,6 @@ rmw_create_subscription(
 rmw_ret_t
 rmw_destroy_subscription(rmw_node_t * node, rmw_subscription_t * subscription)
 {
-  RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_destroy_subscription");
-
   // ASSERTIONS ================================================================
   RMW_CHECK_ARGUMENT_FOR_NULL(node, RMW_RET_INVALID_ARGUMENT);
   RMW_CHECK_ARGUMENT_FOR_NULL(subscription, RMW_RET_INVALID_ARGUMENT);
@@ -201,10 +201,18 @@ rmw_destroy_subscription(rmw_node_t * node, rmw_subscription_t * subscription)
     eclipse_zenoh_identifier,
     return RMW_RET_INCORRECT_RMW_IMPLEMENTATION);
 
+  RCUTILS_LOG_INFO_NAMED(
+    "rmw_zenoh_cpp", "[rmw_destroy_subscription] %s", subscription->topic_name
+  );
+
   // OBTAIN ALLOCATOR ==========================================================
   rcutils_allocator_t * allocator = &node->context->options.allocator;
 
   // CLEANUP ===================================================================
+  zn_undeclare_subscriber(
+    static_cast<rmw_subscription_data_t *>(subscription->data)->zn_subscriber_
+  );
+
   allocator->deallocate(
     static_cast<rmw_subscription_data_t *>(subscription->data)->type_support_, allocator->state
   );
@@ -250,17 +258,18 @@ rmw_take(
   RMW_CHECK_ARGUMENT_FOR_NULL(subscription_data, RMW_RET_ERROR);
 
   // OBTAIN ALLOCATOR ==========================================================
-  rcutils_allocator_t * allocator =
-    &static_cast<rmw_subscription_data_t *>(subscription->data)->node_->context->options.allocator;
+  rcutils_allocator_t * allocator = &subscription_data->node_->context->options.allocator;
 
   // RETRIEVE SERIALIZED MESSAGE ===============================================
-  if (subscription_data->zn_messages_.find(topic_name) == subscription_data->zn_messages_.end()) {
-    RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "Message not found from: %s", topic_name);
+  std::string key(topic_name);
+
+  if (subscription_data->zn_messages_.find(key) == subscription_data->zn_messages_.end()) {
     return RMW_RET_OK;
   }
+  RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "[rmw_take] Message found: %s", key.c_str());
 
   // DESERIALIZE MESSAGE =======================================================
-  auto msg_bytes = subscription_data->zn_messages_[std::string(topic_name)];
+  auto msg_bytes = subscription_data->zn_messages_[key];
 
   unsigned char * cdr_buffer = static_cast<unsigned char *>(
     allocator->allocate(msg_bytes.size(), allocator->state)
@@ -268,7 +277,7 @@ rmw_take(
   memcpy(cdr_buffer, &msg_bytes.front(), msg_bytes.size());
 
   // Remove stored message after successful retrieval
-  subscription_data->zn_messages_.erase(topic_name);
+  subscription_data->zn_messages_.erase(key);
 
   eprosima::fastcdr::FastBuffer fastbuffer(
     reinterpret_cast<char *>(cdr_buffer),
@@ -297,6 +306,10 @@ rmw_take(
 // inside the process.
 //
 // The problem is I'm not sure how to get this data from the way we've done things...
+// So this functionality is left unimplemented for now. It doesn't seem to break pubsub.
+//
+// (More specifically, there isn't a way to send the information on the publish side using Zenoh
+// unless we include it in the raw message bytes that get sent.)
 rmw_ret_t
 rmw_take_with_info(
   const rmw_subscription_t * subscription,
@@ -333,14 +346,13 @@ rmw_take_with_info(
   RMW_CHECK_ARGUMENT_FOR_NULL(subscription_data, RMW_RET_ERROR);
 
   // OBTAIN ALLOCATOR ==========================================================
-  rcutils_allocator_t * allocator =
-    &static_cast<rmw_subscription_data_t *>(subscription->data)->node_->context->options.allocator;
+  rcutils_allocator_t * allocator = &subscription_data->node_->context->options.allocator;
 
   // RETRIEVE SERIALIZED MESSAGE ===============================================
   if (subscription_data->zn_messages_.find(topic_name) == subscription_data->zn_messages_.end()) {
-    RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "Message not found from: %s", topic_name);
     return RMW_RET_OK;
   }
+  RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "[rmw_take_with_info] Message found: %s", topic_name);
 
   // DESERIALIZE MESSAGE =======================================================
   auto msg_bytes = subscription_data->zn_messages_[std::string(topic_name)];
