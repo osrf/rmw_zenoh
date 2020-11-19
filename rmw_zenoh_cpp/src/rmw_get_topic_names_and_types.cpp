@@ -28,8 +28,27 @@ rmw_get_topic_names_and_types(
   bool no_demangle,
   rmw_names_and_types_t * topic_names_and_types)
 {
-  (void)node;
-  (void)allocator;
+  RMW_CHECK_ARGUMENT_FOR_NULL(node, RMW_RET_INVALID_ARGUMENT);
+  RMW_CHECK_TYPE_IDENTIFIERS_MATCH(
+    node,
+    node->implementation_identifier,
+    identifier,
+    return RMW_RET_INCORRECT_RMW_IMPLEMENTATION);
+  RCUTILS_CHECK_ALLOCATOR_WITH_MSG(
+    allocator, "allocator argument is invalid", return RMW_RET_INVALID_ARGUMENT);
+  if (RMW_RET_OK != rmw_names_and_types_check_zero(topic_names_and_types)) {
+    return RMW_RET_INVALID_ARGUMENT;
+  }
+
+  char *uri = "/zenoh/ros/node/*/topics";
+  zn_reply_data_array_t replies = zn_query_collect(s, zn_rname(uri), "", zn_query_target_default(), zn_query_consolidation_default());
+
+  for(unsigned int i = 0; i < replies.len; ++i) {
+      printf(">> [Reply handler] received (%.*s, %.*s)\n",
+            (int)replies.val[i].data.key.len, replies.val[i].data.key.val,
+            (int)replies.val[i].data.value.len, replies.val[i].data.value.val);
+  }
+  zn_reply_data_array_free(replies);
   (void)no_demangle;
   (void)topic_names_and_types;
   RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_get_topic_names_and_types");
