@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "rmw_zenoh_cpp/identifier.hpp"
 #include "rcutils/logging_macros.h"
 #include "rmw/error_handling.h"
 #include "rmw/get_topic_names_and_types.h"
 #include "rmw/rmw.h"
 #include "rmw/names_and_types.h"
 #include "rmw/topic_endpoint_info_array.h"
+#include "rmw/impl/cpp/macros.hpp"
+
+#include "rmw_zenoh_cpp/zenoh-net-interface.h"
 
 extern "C"
 {
@@ -32,7 +36,7 @@ rmw_get_topic_names_and_types(
   RMW_CHECK_TYPE_IDENTIFIERS_MATCH(
     node,
     node->implementation_identifier,
-    identifier,
+    eclipse_zenoh_identifier,
     return RMW_RET_INCORRECT_RMW_IMPLEMENTATION);
   RCUTILS_CHECK_ALLOCATOR_WITH_MSG(
     allocator, "allocator argument is invalid", return RMW_RET_INVALID_ARGUMENT);
