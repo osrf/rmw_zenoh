@@ -34,6 +34,8 @@
 #include "impl/type_support_common.hpp"
 #include "impl/debug_helpers.hpp"
 
+#include "rmw_zenoh_cpp/rmw_node_impl.hpp"
+
 extern "C"
 {
 #include "rmw_zenoh_cpp/zenoh-net-interface.h"
@@ -230,6 +232,19 @@ rmw_create_subscription(
   // I am not sure how this will work with Zenoh
   //
   // Perhaps track something using the nodes?
+
+  rmw_node_impl_t * node_data = static_cast<rmw_node_impl_t *>(node->data);
+  for(unsigned int i = 0; i < node_data->topics_.size; ++i)
+  {
+    // NOTE(esteve): max length for a topic?
+    if(0 == strncmp(topic_name, node_data->topics_.data[i], 256))
+    {
+      return subscription;
+    };
+  }
+
+  rcutils_string_array_resize(&node_data->topics_, node_data->topics_.size + 1);
+  node_data->topics_.data[node_data->topics_.size - 1] = rcutils_strdup(topic_name, *allocator);
 
   return subscription;
 }

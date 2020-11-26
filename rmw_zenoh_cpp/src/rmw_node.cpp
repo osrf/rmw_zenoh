@@ -51,7 +51,6 @@ rmw_create_node(
 {
   (void)domain_id;
   (void)localhost_only;
-
   RCUTILS_LOG_DEBUG_NAMED("rmw_zenoh_cpp", "[rmw_create_node] %s", name);
 
   // ASSERTIONS ================================================================
@@ -161,6 +160,20 @@ rmw_create_node(
     allocator->deallocate(node, allocator->state);
     return nullptr;
   }
+
+  std::string uri{"/zenoh/ros/node/" + std::string{node->name} + "/topics"};
+
+  node_data->uri_ = rcutils_strdup(uri.c_str(), *allocator);
+
+  node_data->topics_and_types_queryable_ = zn_declare_queryable(
+    node->context->impl->session,
+    zn_rname(node_data->uri_),
+    ZN_QUERYABLE_EVAL,
+    rmw_node_impl_t::topics_and_types_query_handler,
+    node_data);
+
+  node_data->topics_ = rcutils_get_zero_initialized_string_array();
+  rcutils_string_array_init(&node_data->topics_, 0, allocator);
 
   // NOTE(CH3): Only for DDS
   // node_impl->domain_id_ = domain_id;

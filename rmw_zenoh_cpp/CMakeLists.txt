@@ -65,6 +65,7 @@ add_library(rmw_zenoh_common_cpp OBJECT
   src/impl/type_support_common.cpp
   src/impl/qos.cpp
   src/impl/debug_helpers.cpp
+  src/impl/rmw_node_impl.cpp
 )
 set_property(TARGET rmw_zenoh_common_cpp PROPERTY POSITION_INDEPENDENT_CODE ON)
 set(ZENOH_COMMON_TARGET_DEPENDENCIES
@@ -120,7 +121,6 @@ if(zenoh_pico_FOUND)
   )
   target_link_libraries(rmw_zenoh_pico_cpp
     fastcdr
-    ${zenoh_pico_LIBRARIES}
   )
 
   set(ZENOH_PICO_TARGET_DEPENDENCIES

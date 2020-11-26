@@ -20,12 +20,14 @@
 #include "rmw/names_and_types.h"
 #include "rmw/topic_endpoint_info_array.h"
 #include "rmw/impl/cpp/macros.hpp"
+#include "rcutils/strdup.h"
 
-#include "rmw_zenoh_cpp/zenoh-net-interface.h"
 #include "rmw_zenoh_cpp/rmw_context_impl.hpp"
 
 extern "C"
 {
+#include "rmw_zenoh_cpp/zenoh-net-interface.h"
+
 rmw_ret_t
 rmw_get_topic_names_and_types(
   const rmw_node_t * node,
@@ -45,18 +47,38 @@ rmw_get_topic_names_and_types(
     return RMW_RET_INVALID_ARGUMENT;
   }
 
-  char *uri = "/zenoh/ros/node/*/topics";
-  zn_reply_data_array_t replies = zn_query_collect(node->context->impl->session, zn_rname(uri), "", zn_query_target_default(), zn_query_consolidation_default());
+  // char *uri = "/zenoh/ros/node/*/topics";
+  // zn_reply_data_array_t replies = zn_query_collect(
+  //   node->context->impl->session,
+  //   zn_rname(uri),
+  //   "",
+  //   zn_query_target_default(),
+  //   zn_query_consolidation_default());
 
-  for(unsigned int i = 0; i < replies.len; ++i) {
-      printf(">> [Reply handler] received (%.*s, %.*s)\n",
-            (int)replies.val[i].data.key.len, replies.val[i].data.key.val,
-            (int)replies.val[i].data.value.len, replies.val[i].data.value.val);
-  }
-  zn_reply_data_array_free(replies);
+  // for(unsigned int i = 0; i < replies.len; ++i) {
+  //     printf(">> [Reply handler] received (%.*s, %.*s)\n",
+  //           (int)replies.val[i].data.key.len, replies.val[i].data.key.val,
+  //           (int)replies.val[i].data.value.len, replies.val[i].data.value.val);
+  // }
+  // zn_reply_data_array_free(replies);
+
   (void)no_demangle;
   (void)topic_names_and_types;
   RCUTILS_LOG_INFO_NAMED("rmw_zenoh_cpp", "rmw_get_topic_names_and_types");
-  return RMW_RET_ERROR;
+  rmw_ret_t rmw_ret = rmw_names_and_types_init(topic_names_and_types, 0, allocator);
+  if (rmw_ret != RMW_RET_OK) {
+    return rmw_ret;
+  }
+
+  rcutils_string_array_resize(&topic_names_and_types->names, topic_names_and_types->names.size + 1);
+  topic_names_and_types->names.data[topic_names_and_types->names.size - 1] = rcutils_strdup("/rosout", *allocator);
+
+  // rcutils_string_array_init(topic_names_and_types->types, 1, allocator);
+  printf("ASDFASDFASDF %ld\n", topic_names_and_types->types->size);
+  rcutils_string_array_resize(topic_names_and_types->types, 1);
+
+  // topic_names_and_types->types->data[0] = rcutils_strdup("rcl_interfaces/msg/Log", *allocator);
+
+  return RMW_RET_OK;
 }
 }  // extern "C"

@@ -25,6 +25,11 @@ extern "C"
 struct rmw_node_impl_t
 {
   rmw_guard_condition_t * graph_guard_condition_;
+  zn_queryable_t * topics_and_types_queryable_;
+  const char * uri_;
+  rcutils_string_array_t topics_;
+
+  static void topics_and_types_query_handler(zn_query_t *, const void * arg);
 };
 
 #endif  // RMW_ZENOH_CPP__RMW_NODE_IMPL_HPP_

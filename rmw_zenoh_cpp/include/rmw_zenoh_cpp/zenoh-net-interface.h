@@ -787,7 +787,8 @@ void zn_undeclare_subscriber(zn_subscriber_t *sub);
  * Returns:
  *     ``0`` in case of success, ``1`` in case of failure.
  */
-int zn_write(zn_session_t *session, zn_reskey_t reskey, const uint8_t *payload, unsigned int len);
+// NOTE(esteve) original: int zn_write(zn_session_t *session, zn_reskey_t reskey, const uint8_t *payload, unsigned int len);
+int zn_write(zn_session_t *session, zn_reskey_t reskey, const char *payload, unsigned int len);
 
 /**
  * Write data with extended options.

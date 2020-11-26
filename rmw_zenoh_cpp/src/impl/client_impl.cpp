@@ -88,15 +88,14 @@ void rmw_client_data_t::zn_response_sub_callback(const zn_sample_t * sample, con
 }
 /// ZENOH SERVICE AVAILABILITY QUERY CALLBACK ==================================
 void rmw_client_data_t::zn_service_availability_query_callback(
-  const zn_source_info_t *,
-  const zn_sample_t * sample,
+  zn_reply_t reply,
   const void *)
 {
   std::lock_guard<std::mutex> guard(query_callback_mutex);
 
   // NOTE(CH3): We unfortunately have to do this copy construction since we shouldn't be using
   // char * as keys to the unordered_map
-  std::string key(sample->key.val, sample->key.len);
+  std::string key(reply.data.data.key.val, reply.data.data.key.len);
 
   auto map_iter = rmw_client_data_t::zn_queryable_to_client_data.find(key);
 

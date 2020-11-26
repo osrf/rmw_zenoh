@@ -38,7 +38,7 @@ struct rmw_client_data_t
   /// STATIC MEMBERS ===========================================================
   static void zn_response_sub_callback(const zn_sample_t * sample, const void * arg);
   static void zn_service_availability_query_callback(
-    const zn_source_info_t * info, const zn_sample_t * sample, const void * arg
+    zn_reply_t reply, const void * arg
   );
 
   // Counter to give client servers unique IDs

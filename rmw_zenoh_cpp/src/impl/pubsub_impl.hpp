@@ -32,9 +32,7 @@ extern "C"
 #include "rmw_zenoh_cpp/zenoh-net-interface.h"
 }
 
-struct rmw_node_impl_t
-{
-};
+struct rmw_node_impl_t;
 
 struct rmw_publisher_data_t
 {
