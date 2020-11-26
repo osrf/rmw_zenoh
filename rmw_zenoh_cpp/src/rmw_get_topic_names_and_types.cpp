@@ -22,6 +22,7 @@
 #include "rmw/impl/cpp/macros.hpp"
 
 #include "rmw_zenoh_cpp/zenoh-net-interface.h"
+#include "rmw_zenoh_cpp/rmw_context_impl.hpp"
 
 extern "C"
 {
@@ -45,7 +46,7 @@ rmw_get_topic_names_and_types(
   }
 
   char *uri = "/zenoh/ros/node/*/topics";
-  zn_reply_data_array_t replies = zn_query_collect(s, zn_rname(uri), "", zn_query_target_default(), zn_query_consolidation_default());
+  zn_reply_data_array_t replies = zn_query_collect(node->context->impl->session, zn_rname(uri), "", zn_query_target_default(), zn_query_consolidation_default());
 
   for(unsigned int i = 0; i < replies.len; ++i) {
       printf(">> [Reply handler] received (%.*s, %.*s)\n",

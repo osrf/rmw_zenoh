@@ -15,6 +15,7 @@
 #include "rmw/rmw.h"
 #include "rmw_zenoh_cpp/rmw_init_options_impl.hpp"
 #include "rmw_zenoh_cpp/zenoh-net-interface.h"
+#include "rmw_zenoh_cpp/zenoh-net-interface-pico.h"
 
 #include "rmw/error_handling.h"
 
