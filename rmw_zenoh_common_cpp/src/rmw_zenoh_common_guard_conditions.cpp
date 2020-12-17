@@ -24,9 +24,9 @@
 
 #include "rcutils/logging_macros.h"
 
-#include "impl/guard_condition_impl.hpp"
+#include "rmw_zenoh_common_cpp/guard_condition_impl.hpp"
 
-#include "rmw_zenoh_common_cpp/rmw_zenoh_common.h"
+#include "rmw_zenoh_common_cpp/rmw_zenoh_common.hpp"
 
 /// CREATE GUARD CONDITION =====================================================
 // Create a guard condition and return a handle to that guard condition.

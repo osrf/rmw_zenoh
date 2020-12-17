@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef RMW_ZENOH_COMMON_CPP__RMW_ZENOH_COMMON_H_
-#define RMW_ZENOH_COMMON_CPP__RMW_ZENOH_COMMON_H_
+#ifndef RMW_ZENOH_COMMON_CPP__RMW_ZENOH_COMMON_HPP_
+#define RMW_ZENOH_COMMON_CPP__RMW_ZENOH_COMMON_HPP_
 
 #ifdef __cplusplus
 extern "C"
@@ -119,4 +119,4 @@ rmw_zenoh_common_publisher_get_actual_qos(
 }
 #endif
 
-#endif  // RMW_ZENOH_COMMON_CPP__RMW_ZENOH_COMMON_H_
+#endif  // RMW_ZENOH_COMMON_CPP__RMW_ZENOH_COMMON_HPP_

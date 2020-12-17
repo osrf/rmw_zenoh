@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "service_impl.hpp"
+#include "rmw_zenoh_common_cpp/service_impl.hpp"
 
 #include <iostream>
 #include <memory>

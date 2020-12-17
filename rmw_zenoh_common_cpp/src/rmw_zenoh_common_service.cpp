@@ -26,9 +26,9 @@
 
 #include "rmw_zenoh_common_cpp/rmw_context_impl.hpp"
 
-#include "impl/type_support_common.hpp"
-#include "impl/service_impl.hpp"
-#include "impl/client_impl.hpp"
+#include "rmw_zenoh_common_cpp/type_support_common.hpp"
+#include "rmw_zenoh_common_cpp/service_impl.hpp"
+#include "rmw_zenoh_common_cpp/client_impl.hpp"
 
 /// CREATE SERVICE SERVER ======================================================
 // Create and return an rmw service server

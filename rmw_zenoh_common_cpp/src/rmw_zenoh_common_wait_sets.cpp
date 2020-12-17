@@ -23,7 +23,7 @@
 #include "rmw/rmw.h"
 #include "rmw/event.h"
 
-#include "impl/wait_impl.hpp"
+#include "rmw_zenoh_common_cpp/wait_impl.hpp"
 
 /// CREATE WAIT SET ============================================================
 // Create and return a wait set to wait to store conditions that the middleware will block on

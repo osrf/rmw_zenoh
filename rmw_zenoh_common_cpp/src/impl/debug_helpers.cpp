@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "debug_helpers.hpp"
+#include "rmw_zenoh_common_cpp/debug_helpers.hpp"
 #include "rcutils/logging_macros.h"
 
 void rmw_zenoh_common_cpp::log_debug_qos_profile(const rmw_qos_profile_t * qos_profile)

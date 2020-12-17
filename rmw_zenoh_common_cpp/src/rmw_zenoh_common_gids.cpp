@@ -20,7 +20,7 @@
 #include "rmw/names_and_types.h"
 #include "rmw/rmw.h"
 
-#include "impl/pubsub_impl.hpp"
+#include "rmw_zenoh_common_cpp/pubsub_impl.hpp"
 
 /// GET PUBLISHER GID ==========================================================
 // rmw_gid_t Doc: http://docs.ros2.org/latest/api/rmw/structrmw__gid__t.html

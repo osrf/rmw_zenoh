@@ -25,6 +25,8 @@ find_package(fastcdr REQUIRED CONFIG)
 find_package(rosidl_generator_c REQUIRED)
 find_package(rosidl_typesupport_zenoh_c REQUIRED)
 find_package(rosidl_typesupport_zenoh_cpp REQUIRED)
+find_package(rosidl_typesupport_introspection_c REQUIRED)
+find_package(rosidl_typesupport_introspection_cpp REQUIRED)
 
 find_package(rmw_zenoh_common_cpp REQUIRED)
 
@@ -54,7 +56,13 @@ target_link_libraries(rmw_zenoh_pico_dynamic_cpp
   fastcdr
 )
 
-ament_target_dependencies(rmw_zenoh_pico_dynamic_cpp zenoh_pico_vendor zenoh_pico rmw_zenoh_common_cpp)
+ament_target_dependencies(rmw_zenoh_pico_dynamic_cpp
+  zenoh_pico_vendor
+  zenoh_pico
+  rmw_zenoh_common_cpp
+  rosidl_typesupport_introspection_c
+  rosidl_typesupport_introspection_cpp
+)
 configure_rmw_library(rmw_zenoh_pico_dynamic_cpp)
 ament_export_libraries(rmw_zenoh_pico_dynamic_cpp)
 ament_export_dependencies(zenoh_pico_vendor)

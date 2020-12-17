@@ -27,7 +27,7 @@
 #include "rmw_zenoh_common_cpp/rmw_context_impl.hpp"
 #include "rmw_zenoh_common_cpp/rmw_node_impl.hpp"
 
-#include "rmw_zenoh_common_cpp/rmw_zenoh_common.h"
+#include "rmw_zenoh_common_cpp/rmw_zenoh_common.hpp"
 
 /// CREATE NODE ================================================================
 // Create a node and return a handle to that node.

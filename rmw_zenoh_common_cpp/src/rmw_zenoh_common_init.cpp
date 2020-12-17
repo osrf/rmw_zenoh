@@ -28,7 +28,7 @@
 #include "rmw_zenoh_common_cpp/rmw_context_impl.hpp"
 #include "rmw_zenoh_common_cpp/rmw_init_options_impl.hpp"
 
-#include "rmw_zenoh_common_cpp/rmw_zenoh_common.h"
+#include "rmw_zenoh_common_cpp/rmw_zenoh_common.hpp"
 #include "rmw_zenoh_common_cpp/zenoh-net-interface.h"
 
 /// INIT CONTEXT ===============================================================

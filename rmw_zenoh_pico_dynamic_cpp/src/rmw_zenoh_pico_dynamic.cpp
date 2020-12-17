@@ -18,10 +18,12 @@
 
 #include <memory>
 
+#include "rmw/types.h"
 #include "rmw/impl/cpp/macros.hpp"
 #include "rmw/error_handling.h"
 #include "rmw/rmw.h"
 #include "rmw/init.h"
+#include "rmw/validate_full_topic_name.h"
 
 #include "rcutils/logging_macros.h"
 
@@ -30,8 +32,17 @@
 
 #include "rmw_zenoh_common_cpp/identifier.hpp"
 
-#include "rmw_zenoh_common_cpp/rmw_zenoh_common.h"
+#include "rmw_zenoh_common_cpp/rmw_zenoh_common.hpp"
 #include "rmw_zenoh_common_cpp/zenoh-net-interface.h"
+#include "rmw_zenoh_common_cpp/MessageTypeSupport.hpp"
+#include "rmw_zenoh_common_cpp/debug_helpers.hpp"
+#include "rmw_zenoh_common_cpp/pubsub_impl.hpp"
+#include "rcutils/strdup.h"
+#include "rmw_zenoh_common_cpp/qos.hpp"
+#include "rmw_zenoh_common_cpp/type_support_common.hpp"
+
+#include "rosidl_typesupport_introspection_cpp/identifier.hpp"
+#include "rosidl_typesupport_introspection_c/identifier.h"
 
 zn_properties_t * configure_connection_mode(rmw_context_t * context)
 {
@@ -219,13 +230,190 @@ rmw_create_subscription(
   const rmw_qos_profile_t * qos_profile,
   const rmw_subscription_options_t * subscription_options)
 {
-  return rmw_zenoh_common_create_subscription(
-    node,
-    type_supports,
+  RCUTILS_LOG_DEBUG_NAMED(
+    "rmw_zenoh_common_cpp",
+    "[rmw_create_subscription] %s with queue of depth %ld",
     topic_name,
-    qos_profile,
-    subscription_options,
-    eclipse_zenoh_identifier);
+    qos_profile->depth);
+
+  // ASSERTIONS ================================================================
+  RMW_CHECK_ARGUMENT_FOR_NULL(node, nullptr);
+
+  RMW_CHECK_TYPE_IDENTIFIERS_MATCH(
+    node,
+    node->implementation_identifier,
+    eclipse_zenoh_identifier,
+    return nullptr);
+
+  RMW_CHECK_ARGUMENT_FOR_NULL(topic_name, nullptr);
+  if (strlen(topic_name) == 0) {
+    RMW_SET_ERROR_MSG("subscription topic is empty string");
+    return nullptr;
+  }
+
+  RMW_CHECK_ARGUMENT_FOR_NULL(qos_profile, nullptr);
+
+  // NOTE(CH3): For some reason the tests want a failed publisher init on passing an unknown QoS.
+  // I don't understand why, and I don't see a check to fulfill that test in any RMW implementations
+  // if (# SOME CHECK HERE) {
+  //   RMW_SET_ERROR_MSG("expected configured QoS profile");
+  //   return nullptr;
+  // }
+
+  RCUTILS_LOG_DEBUG_NAMED("rmw_zenoh_common_cpp", "rmw_create_subscriber() qos_profile:");
+  rmw_zenoh_common_cpp::log_debug_qos_profile(qos_profile);
+
+  RMW_CHECK_ARGUMENT_FOR_NULL(subscription_options, nullptr);
+  RMW_CHECK_ARGUMENT_FOR_NULL(type_supports, nullptr);
+
+  // Although we do not yet support QoS we still fail on clearly-bad settings
+  if (!rmw_zenoh_common_cpp::is_valid_qos(qos_profile)) {
+    return nullptr;
+  }
+
+  // OBTAIN ALLOCATOR ==========================================================
+  rcutils_allocator_t * allocator = &node->context->options.allocator;
+
+  // VALIDATE TOPIC NAME =======================================================
+  int validation_result;
+
+  if (rmw_validate_full_topic_name(topic_name, &validation_result, nullptr) != RMW_RET_OK) {
+    RMW_SET_ERROR_MSG("rmw_validate_full_topic_name failed");
+    return nullptr;
+  }
+
+  if (validation_result != RMW_TOPIC_VALID && !qos_profile->avoid_ros_namespace_conventions) {
+    RMW_SET_ERROR_MSG_WITH_FORMAT_STRING("subscription topic is malformed: %s", topic_name);
+    return nullptr;
+  }
+
+  // OBTAIN TYPESUPPORT ========================================================
+  const rosidl_message_type_support_t * type_support = get_message_typesupport_handle(
+    type_supports, RMW_ZENOH_CPP_TYPESUPPORT_C);
+
+  if (!type_support) {
+    type_support = get_message_typesupport_handle(type_supports, RMW_ZENOH_CPP_TYPESUPPORT_CPP);
+    if (!type_support) {
+      RCUTILS_LOG_INFO("%s", topic_name);
+      RMW_SET_ERROR_MSG("type support not from this implementation");
+      return nullptr;
+    }
+  }
+
+  // CREATE SUBSCRIPTION =======================================================
+  rmw_subscription_t * subscription = static_cast<rmw_subscription_t *>(
+    allocator->allocate(sizeof(rmw_subscription_t), allocator->state));
+  if (!subscription) {
+    RMW_SET_ERROR_MSG("failed to allocate rmw_subscription_t");
+    return nullptr;
+  }
+
+  // Populate common members
+  subscription->implementation_identifier = eclipse_zenoh_identifier;  // const char * assignment
+  subscription->options = *subscription_options;
+  subscription->can_loan_messages = false;
+
+  subscription->topic_name = rcutils_strdup(topic_name, *allocator);
+  if (!subscription->topic_name) {
+    RMW_SET_ERROR_MSG("failed to allocate subscription topic name");
+    allocator->deallocate(subscription, allocator->state);
+    return nullptr;
+  }
+
+  subscription->data = static_cast<rmw_subscription_data_t *>(
+    allocator->allocate(sizeof(rmw_subscription_data_t), allocator->state));
+  new(subscription->data) rmw_subscription_data_t();
+  if (!subscription->data) {
+    RMW_SET_ERROR_MSG("failed to allocate subscription data");
+    allocator->deallocate(const_cast<char *>(subscription->topic_name), allocator->state);
+    allocator->deallocate(subscription, allocator->state);
+    return nullptr;
+  }
+
+  // CREATE SUBSCRIPTION MEMBERS ===============================================
+  // Init type support callbacks
+  auto * callbacks = static_cast<const message_type_support_callbacks_t *>(type_support->data);
+
+  // Obtain Zenoh session
+  zn_session_t * session = node->context->impl->session;
+
+  // Get typed pointer to implementation specific subscription data struct
+  auto * subscription_data = static_cast<rmw_subscription_data_t *>(subscription->data);
+
+  subscription_data->zn_session_ = session;
+  subscription_data->typesupport_identifier_ = type_support->typesupport_identifier;
+  subscription_data->type_support_impl_ = type_support->data;
+
+  // Allocate and in-place assign new message typesupport instance
+  subscription_data->type_support_ = static_cast<rmw_zenoh_common_cpp::MessageTypeSupport *>(
+    allocator->allocate(sizeof(rmw_zenoh_common_cpp::MessageTypeSupport), allocator->state));
+  new(subscription_data->type_support_) rmw_zenoh_common_cpp::MessageTypeSupport(callbacks);
+  if (!subscription_data->type_support_) {
+    RMW_SET_ERROR_MSG("failed to allocate MessageTypeSupport");
+    allocator->deallocate(subscription->data, allocator->state);
+
+    allocator->deallocate(const_cast<char *>(subscription->topic_name), allocator->state);
+    allocator->deallocate(subscription, allocator->state);
+    return nullptr;
+  }
+
+  // Assign node pointer
+  subscription_data->node_ = node;
+
+  // Assign and increment unique subscription ID atomically
+  subscription_data->subscription_id_ =
+    rmw_subscription_data_t::subscription_id_counter.fetch_add(1, std::memory_order_relaxed);
+
+  // Configure message queue
+  subscription_data->queue_depth_ = qos_profile->depth;
+
+  // ADD SUBSCRIPTION DATA TO TOPIC MAP ========================================
+  // This will allow us to access the subscription data structs for this Zenoh topic key expression
+  std::string key(subscription->topic_name);
+  auto map_iter = rmw_subscription_data_t::zn_topic_to_sub_data.find(key);
+
+  if (map_iter == rmw_subscription_data_t::zn_topic_to_sub_data.end()) {
+    RCUTILS_LOG_DEBUG_NAMED(
+      "rmw_zenoh_common_cpp",
+      "[rmw_create_subscription] New topic detected: %s",
+      topic_name);
+
+    // If no elements for this Zenoh topic key expression exists, add it in
+    std::vector<rmw_subscription_data_t *> sub_data_vec{subscription_data};
+    rmw_subscription_data_t::zn_topic_to_sub_data[key] = sub_data_vec;
+
+    // We initialise subscribers ONCE (otherwise we'll get duplicate messages)
+    // The topic name will be the same for any duplicate subscribers, so it is ok
+    subscription_data->zn_subscriber_ = zn_declare_subscriber(
+      subscription_data->zn_session_,
+      zn_rname(subscription->topic_name),
+      zn_subinfo_default(),  // NOTE(CH3): Default for now
+      subscription_data->zn_sub_callback,
+      nullptr);
+
+    RCUTILS_LOG_DEBUG_NAMED(
+      "rmw_zenoh_common_cpp",
+      "[rmw_create_subscription] Zenoh subscription declared for %s",
+      topic_name);
+  } else {
+    // Otherwise, append to the vector
+    map_iter->second.push_back(subscription_data);
+  }
+
+  RCUTILS_LOG_DEBUG_NAMED(
+    "rmw_zenoh_common_cpp",
+    "[rmw_create_subscription] Subscription for %s (ID: %ld) added to topic map",
+    topic_name,
+    subscription_data->subscription_id_);
+
+  // TODO(CH3): Put the subscription name/pointer into its corresponding node for tracking?
+
+  // NOTE(CH3) TODO(CH3): No graph updates are implemented yet
+  // I am not sure how this will work with Zenoh
+  //
+  // Perhaps track something using the nodes?
+
+  return subscription;
 }
 
 /// DESTROY SUBSCRIPTION =======================================================
@@ -273,13 +461,153 @@ rmw_create_publisher(
   const rmw_qos_profile_t * qos_profile,
   const rmw_publisher_options_t * publisher_options)
 {
-  return rmw_zenoh_common_create_publisher(
+  RCUTILS_LOG_DEBUG_NAMED("rmw_zenoh_common_cpp", "[rmw_create_publisher] %s", topic_name);
+
+  // ASSERTIONS ================================================================
+  RMW_CHECK_ARGUMENT_FOR_NULL(node, nullptr);
+
+  RMW_CHECK_TYPE_IDENTIFIERS_MATCH(
     node,
-    type_supports,
+    node->implementation_identifier,
+    eclipse_zenoh_identifier,
+    return nullptr);
+
+  RMW_CHECK_ARGUMENT_FOR_NULL(topic_name, nullptr);
+  if (strlen(topic_name) == 0) {
+    RMW_SET_ERROR_MSG("publisher topic is empty string");
+    return nullptr;
+  }
+
+  RMW_CHECK_ARGUMENT_FOR_NULL(qos_profile, nullptr);
+
+  // TODO(CH3): When we figure out how to spoof QoS, check for a 'configured' QoS to pass the final
+  // test that is failing
+  //
+  // if (# SOME CHECK HERE) {
+  //   RMW_SET_ERROR_MSG("expected configured QoS profile");
+  //   return nullptr;
+  // }
+
+  RCUTILS_LOG_DEBUG_NAMED("rmw_zenoh_common_cpp", "rmw_create_publisher() qos_profile:");
+  rmw_zenoh_common_cpp::log_debug_qos_profile(qos_profile);
+
+  RMW_CHECK_ARGUMENT_FOR_NULL(publisher_options, nullptr);
+  RMW_CHECK_ARGUMENT_FOR_NULL(type_supports, nullptr);
+
+  // Although we do not yet support QoS we still fail on clearly-bad settings
+  if (!rmw_zenoh_common_cpp::is_valid_qos(qos_profile)) {
+    return nullptr;
+  }
+
+  // OBTAIN ALLOCATOR ==========================================================
+  rcutils_allocator_t * allocator = &node->context->options.allocator;
+
+  // VALIDATE TOPIC NAME =======================================================
+  int validation_result;
+
+  if (rmw_validate_full_topic_name(topic_name, &validation_result, nullptr) != RMW_RET_OK) {
+    RMW_SET_ERROR_MSG("rmw_validate_full_topic_name failed");
+    return nullptr;
+  }
+
+  if (validation_result != RMW_TOPIC_VALID && !qos_profile->avoid_ros_namespace_conventions) {
+    RMW_SET_ERROR_MSG_WITH_FORMAT_STRING("publisher topic is malformed: %s", topic_name);
+    return nullptr;
+  }
+
+  // OBTAIN TYPESUPPORT ========================================================
+  const rosidl_message_type_support_t * type_support = get_message_typesupport_handle(
+    type_supports, rosidl_typesupport_introspection_c__identifier);
+
+  if (!type_support) {
+    type_support = get_message_typesupport_handle(
+      type_supports, rosidl_typesupport_introspection_cpp::typesupport_identifier);
+    if (!type_support) {
+      RMW_SET_ERROR_MSG("type support not from this implementation");
+      return nullptr;
+    }
+  }
+
+  // CREATE PUBLISHER ==========================================================
+  rmw_publisher_t * publisher = static_cast<rmw_publisher_t *>(
+    allocator->allocate(sizeof(rmw_publisher_t), allocator->state));
+  if (!publisher) {
+    RMW_SET_ERROR_MSG("failed to allocate rmw_publisher_t");
+    return nullptr;
+  }
+
+  // Populate common members
+  publisher->implementation_identifier = type_support->typesupport_identifier;
+
+  publisher->topic_name = rcutils_strdup(topic_name, *allocator);
+  if (!publisher->topic_name) {
+    RMW_SET_ERROR_MSG("failed to allocate publisher topic name");
+    allocator->deallocate(publisher, allocator->state);
+    return nullptr;
+  }
+
+  publisher->data = static_cast<rmw_publisher_data_t *>(
+    allocator->allocate(sizeof(rmw_publisher_data_t), allocator->state));
+  if (!publisher->data) {
+    RMW_SET_ERROR_MSG("failed to allocate publisher data");
+    allocator->deallocate(publisher->data, allocator->state);
+    allocator->deallocate(const_cast<char *>(publisher->topic_name), allocator->state);
+    allocator->deallocate(publisher, allocator->state);
+    return nullptr;
+  }
+
+  publisher->options = *publisher_options;
+
+  // CREATE PUBLISHER MEMBERS ==================================================
+  // Get typed pointer to implementation specific publisher data struct
+  auto publisher_data = static_cast<rmw_publisher_data_t *>(publisher->data);
+
+  // Init type support callbacks
+  auto callbacks = static_cast<const message_type_support_callbacks_t *>(type_support->data);
+
+  // Create Zenoh resource
+  zn_session_t * session = node->context->impl->session;
+
+  // The topic ID must be unique within a single process, but separate processes can reuse IDs,
+  // even in the same Zenoh network, because the ID is never transmitted over the wire.
+  // Conversely, the ID used in two communicating processes cannot be used to determine if they are
+  // using the same topic or not.
+  publisher_data->zn_topic_id_ = zn_declare_resource(session, zn_rname(publisher->topic_name));
+
+  // Assign publisher data members
+  publisher_data->zn_session_ = session;
+  publisher_data->typesupport_identifier_ = type_support->typesupport_identifier;
+  publisher_data->type_support_impl_ = type_support->data;
+  RCUTILS_LOG_DEBUG_NAMED(
+    "rmw_zenoh_common_cpp",
+    "[rmw_create_publisher] Zenoh resource declared: %s (%ld)",
     topic_name,
-    qos_profile,
-    publisher_options,
-    eclipse_zenoh_identifier);
+    publisher_data->zn_topic_id_);
+
+  // Allocate and in-place construct new message typesupport instance
+  publisher_data->type_support_ = static_cast<rmw_zenoh_common_cpp::MessageTypeSupport *>(
+    allocator->allocate(sizeof(rmw_zenoh_common_cpp::MessageTypeSupport), allocator->state));
+  new(publisher_data->type_support_) rmw_zenoh_common_cpp::MessageTypeSupport(callbacks);
+  if (!publisher_data->type_support_) {
+    RMW_SET_ERROR_MSG("failed to allocate MessageTypeSupport");
+    allocator->deallocate(publisher->data, allocator->state);
+
+    allocator->deallocate(const_cast<char *>(publisher->topic_name), allocator->state);
+    allocator->deallocate(publisher, allocator->state);
+    return nullptr;
+  }
+
+  // Assign node pointer
+  publisher_data->node_ = node;
+
+  // TODO(CH3): Put the publisher name/pointer into its corresponding node for tracking?
+
+  // NOTE(CH3) TODO(CH3): No graph updates are implemented yet
+  // I am not sure how this will work with Zenoh
+  //
+  // Perhaps track something using the nodes?
+
+  return publisher;
 }
 
 /// DESTROY PUBLISHER ==========================================================

@@ -27,8 +27,8 @@
 
 #include "rmw_zenoh_common_cpp/rmw_context_impl.hpp"
 
-#include "impl/type_support_common.hpp"
-#include "impl/client_impl.hpp"
+#include "rmw_zenoh_common_cpp/type_support_common.hpp"
+#include "rmw_zenoh_common_cpp/client_impl.hpp"
 
 /// CHECK IF SERVER IS AVAILABLE ===============================================
 // Check if a service server is available for the given service client

@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "wait_impl.hpp"
+#include "rmw_zenoh_common_cpp/wait_impl.hpp"
 
 #include "rcutils/logging_macros.h"
-#include "service_impl.hpp"
-#include "client_impl.hpp"
-#include "pubsub_impl.hpp"
+#include "rmw_zenoh_common_cpp/service_impl.hpp"
+#include "rmw_zenoh_common_cpp/client_impl.hpp"
+#include "rmw_zenoh_common_cpp/pubsub_impl.hpp"
 
 /// HELPER FUNCTION FOR WAIT ===================================================
 bool check_wait_conditions(

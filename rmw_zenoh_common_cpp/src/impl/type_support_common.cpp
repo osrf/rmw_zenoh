@@ -18,7 +18,7 @@
 #include <string>
 
 #include "rmw/error_handling.h"
-#include "type_support_common.hpp"
+#include "rmw_zenoh_common_cpp/type_support_common.hpp"
 
 namespace rmw_zenoh_common_cpp
 {
