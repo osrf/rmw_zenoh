@@ -33,9 +33,10 @@
 #include "impl/type_support_common.hpp"
 #include "impl/debug_helpers.hpp"
 
+#include "rmw_zenoh_common_cpp/zenoh-net-interface.h"
+
 extern "C"
 {
-#include "rmw_zenoh_common_cpp/zenoh-net-interface.h"
 
 /// CREATE SUBSCRIPTION ========================================================
 // Create and return an rmw subscriber
@@ -153,7 +154,7 @@ rmw_zenoh_common_create_subscription(
   auto * callbacks = static_cast<const message_type_support_callbacks_t *>(type_support->data);
 
   // Obtain Zenoh session
-  zn_session_t * session = node->context->impl->session;
+  zn_session_t * session = node->context->impl->session_info->session;
 
   // Get typed pointer to implementation specific subscription data struct
   auto * subscription_data = static_cast<rmw_subscription_data_t *>(subscription->data);
@@ -420,7 +421,7 @@ rmw_zenoh_common_take(
 // Take message out of the message queue, and obtain its message info
 //
 // TODO(CH3): By right the passed rmw_message_info_t should have its members filled, which include:
-// Source and message reception timestamps, publisher_gid, and whether the message was from
+// Source and message reception timestamps, publisher_reskey, and whether the message was from
 // inside the process.
 //
 // The problem is I'm not sure how to get this data from the way we've done things...

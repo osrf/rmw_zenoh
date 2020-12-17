@@ -15,12 +15,8 @@
 #ifndef RMW_ZENOH_COMMON_CPP__RMW_NODE_IMPL_HPP_
 #define RMW_ZENOH_COMMON_CPP__RMW_NODE_IMPL_HPP_
 
-#include "rmw/rmw.h"
-
-extern "C"
-{
 #include "rmw_zenoh_common_cpp/zenoh-net-interface.h"
-}
+#include "rmw/rmw.h"
 
 struct rmw_node_impl_t
 {
