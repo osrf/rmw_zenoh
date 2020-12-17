@@ -44,6 +44,8 @@
 #include "rosidl_typesupport_introspection_cpp/identifier.hpp"
 #include "rosidl_typesupport_introspection_c/identifier.h"
 
+#include "rmw_zenoh_pico_dynamic_cpp/dynamic_type_support.hpp"
+
 zn_properties_t * configure_connection_mode(rmw_context_t * context)
 {
   if (strcmp(context->options.impl->mode, "CLIENT") == 0) {
@@ -584,10 +586,18 @@ rmw_create_publisher(
     topic_name,
     publisher_data->zn_topic_id_);
 
+  // Assign node pointer
+  publisher_data->node_ = node;
+
   // Allocate and in-place construct new message typesupport instance
-  publisher_data->type_support_ = static_cast<rmw_zenoh_common_cpp::MessageTypeSupport *>(
-    allocator->allocate(sizeof(rmw_zenoh_common_cpp::MessageTypeSupport), allocator->state));
-  new(publisher_data->type_support_) rmw_zenoh_common_cpp::MessageTypeSupport(callbacks);
+  std::string type_name = _create_type_name(
+    type_support->data, publisher_data->typesupport_identifier_);
+  if (!_get_registered_type(publisher_data->node_, type_name, &publisher_data->type_support_)) {
+    publisher_data->type_support_ = _create_message_type_support(type_support->data,
+        publisher_data->typesupport_identifier_);
+    _register_type(publisher_data->node_, publisher_data->type_support_, publisher_data->typesupport_identifier_);
+  }
+
   if (!publisher_data->type_support_) {
     RMW_SET_ERROR_MSG("failed to allocate MessageTypeSupport");
     allocator->deallocate(publisher->data, allocator->state);
@@ -596,9 +606,6 @@ rmw_create_publisher(
     allocator->deallocate(publisher, allocator->state);
     return nullptr;
   }
-
-  // Assign node pointer
-  publisher_data->node_ = node;
 
   // TODO(CH3): Put the publisher name/pointer into its corresponding node for tracking?
 

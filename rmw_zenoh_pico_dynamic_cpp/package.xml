@@ -13,23 +13,22 @@
   <author>Morgan Quigley</author>
 
   <buildtool_depend>ament_cmake_ros</buildtool_depend>
-
   <buildtool_export_depend>ament_cmake</buildtool_export_depend>
 
   <depend>zenoh_pico_vendor</depend>
-
   <depend>rmw_zenoh_common_cpp</depend>
+	<depend>rmw_implementation_cmake</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <test_depend>osrf_testing_tools_cpp</test_depend>
   <test_depend>test_msgs</test_depend>
 
-  <build_depend>rosidl_typesupport_introspection_c</build_depend>
+  <!-- <build_depend>rosidl_typesupport_introspection_c</build_depend>
   <build_depend>rosidl_typesupport_introspection_cpp</build_depend>
 
   <build_export_depend>rosidl_typesupport_introspection_c</build_export_depend>
-  <build_export_depend>rosidl_typesupport_introspection_cpp</build_export_depend>
+  <build_export_depend>rosidl_typesupport_introspection_cpp</build_export_depend> -->
 
   <member_of_group>rmw_implementation_packages</member_of_group>
 

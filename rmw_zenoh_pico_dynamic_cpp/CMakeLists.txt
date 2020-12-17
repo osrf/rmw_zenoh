@@ -59,6 +59,7 @@ target_link_libraries(rmw_zenoh_pico_dynamic_cpp
 ament_target_dependencies(rmw_zenoh_pico_dynamic_cpp
   zenoh_pico_vendor
   zenoh_pico
+  rmw
   rmw_zenoh_common_cpp
   rosidl_typesupport_introspection_c
   rosidl_typesupport_introspection_cpp
