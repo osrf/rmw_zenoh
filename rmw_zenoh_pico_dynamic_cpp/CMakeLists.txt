@@ -27,18 +27,20 @@ find_package(zenoh_pico REQUIRED)
 
 ament_export_dependencies(rosidl_typesupport_zenoh_cpp)
 ament_export_dependencies(rosidl_typesupport_zenoh_c)
+ament_export_dependencies(rosidl_typesupport_introspection_c)
+ament_export_dependencies(rosidl_typesupport_introspection_cpp)
 ament_export_dependencies(rosidl_generator_c)
 ament_export_dependencies(rcutils)
 ament_export_dependencies(rmw)
 ament_export_dependencies(rmw_zenoh_common_cpp)
 
 register_rmw_implementation(
-  "c:rosidl_typesupport_c:rosidl_typesupport_zenoh_c"
-  "cpp:rosidl_typesupport_cpp:rosidl_typesupport_zenoh_cpp"
+  "c:rosidl_typesupport_c:rosidl_typesupport_introspection_c"
+  "cpp:rosidl_typesupport_cpp:rosidl_typesupport_introspection_cpp"
 )
 
 add_library(rmw_zenoh_pico_dynamic_cpp
-  src/rmw_zenoh_pico.cpp
+  src/rmw_zenoh_pico_dynamic.cpp
 )
 target_include_directories(rmw_zenoh_pico_dynamic_cpp PRIVATE include)
 target_link_libraries(rmw_zenoh_pico_dynamic_cpp
