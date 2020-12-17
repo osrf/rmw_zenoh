@@ -31,6 +31,7 @@ jobs:
           ${PWD}/../rmw_zenoh_common_cpp/ \
           ${PWD}/../rmw_zenoh_cpp/ \
           ${PWD}/../rmw_zenoh_pico_cpp/ \
+          ${PWD}/../rmw_zenoh_pico_dynamic_cpp/ \
           ${PWD}/../zenoh_vendor/ \
           ${PWD}/../zenoh_pico_vendor/ \
           src/
